@@ -1,5 +1,5 @@
--- [[ SINGLE BUTTON - AUTO SPAM TO OLDEST SERVER WITH RAINBOW BORDER ]]
-local SCRIPT_ID = "Delta_ServerHop_Rainbow_V5"
+-- [[ SINGLE BUTTON - AUTO SPAM TO OLDEST SERVER WITH RAINBOW BORDER + DRAGGABLE ]]
+local SCRIPT_ID = "Delta_ServerHop_Fixed_V6"
 
 if getgenv()[SCRIPT_ID] then
     pcall(function()
@@ -13,6 +13,7 @@ local TeleportService = game:GetService("TeleportService")
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
 
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = SCRIPT_ID
@@ -43,6 +44,32 @@ Stroke.Color = Color3.fromRGB(255, 170, 0)
 Stroke.Thickness = 2
 Stroke.Parent = Button
 
+-- [[ DRAGGABLE SYSTEM ]]
+local dragging = false
+local dragStart = nil
+local startPos = nil
+
+Button.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = true
+        dragStart = input.Position
+        startPos = Button.Position
+    end
+end)
+
+Button.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = false
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement and dragging then
+        local delta = input.Position - dragStart
+        Button.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+end)
+
 -- Rainbow colors array
 local rainbowColors = {
     Color3.fromRGB(255, 0, 0),      -- Red
@@ -67,12 +94,13 @@ task.spawn(function()
     end
 end)
 
--- Spam function - Tìm server lâu nhất
+-- Spam function - Tìm server lâu nhất CHẮC CHẮN
 local isSpamming = false
 
 local function Spam()
     if isSpamming then return end
     isSpamming = true
+    dragging = false
     Button.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
     
     local placeId = game.PlaceId
@@ -84,20 +112,21 @@ local function Spam()
     while attemptCount < maxAttempts and not success do
         attemptCount = attemptCount + 1
         
+        -- API với sortOrder=Asc = server cũ nhất lên đầu
         local apiURL = "https://games.roblox.com/v1/games/" .. placeId .. "/servers/Public?sortOrder=Asc&limit=100"
         
         local ok, result = pcall(function()
             return HttpService:JSONDecode(game:HttpGet(apiURL))
         end)
         
-        if ok and result and result.data then
-            -- Tìm server lâu nhất (oldest - đã được sắp xếp từ API)
+        if ok and result and result.data and #result.data > 0 then
+            -- Lấy server đầu tiên có chỗ trống = server lâu nhất
             local oldestServer = nil
             
-            for _, server in ipairs(result.data) do
+            for i, server in ipairs(result.data) do
                 if server.id ~= currentJobId and server.playing < server.maxPlayers then
                     oldestServer = server
-                    break -- Đã là server lâu nhất rồi (API sắp xếp Asc)
+                    break
                 end
             end
             
@@ -126,4 +155,8 @@ local function Spam()
     isSpamming = false
 end
 
-Button.MouseButton1Click:Connect(Spam)
+Button.MouseButton1Click:Connect(function()
+    if not dragging then
+        Spam()
+    end
+end)
