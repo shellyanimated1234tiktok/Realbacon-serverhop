@@ -51,6 +51,8 @@ UIStroke.Parent = MenuButton
 -- [[ DRAGGABLE SYSTEM: Kéo thả mượt mà ]]
 local dragging, dragInput, dragStart, startPos
 local isProcessing = false
+local lastTeleportTime = 0
+local TELEPORT_COOLDOWN = 5 -- 5 giây cooldown
 
 local function update(input)
     if isProcessing then return end
@@ -82,8 +84,17 @@ end)
 
 -- [[ HÀM TÌM SERVER LÂU NHẤT CÓ CHỖ TRỐNG ]]
 local function TeleportToOldestServer()
+    local currentTime = tick()
+    
     if isProcessing then
         warn("[System] Đang xử lý, vui lòng chờ!")
+        return
+    end
+    
+    if currentTime - lastTeleportTime < TELEPORT_COOLDOWN then
+        local waitTime = math.ceil(TELEPORT_COOLDOWN - (currentTime - lastTeleportTime))
+        MenuButton.Text = "⏳ Chờ " .. waitTime .. "s"
+        MenuButton.BackgroundColor3 = Color3.fromRGB(150, 150, 150)
         return
     end
     
@@ -93,7 +104,6 @@ local function TeleportToOldestServer()
     
     local placeId = game.PlaceId
     local currentJobId = game.JobId
-    -- Lấy 100 server đầu tiên (sắp xếp từ cũ đến mới)
     local apiURL = "https://games.roblox.com/v1/games/" .. placeId .. "/servers/Public?sortOrder=Asc&limit=100" 
     
     local success, result = pcall(function()
@@ -105,10 +115,9 @@ local function TeleportToOldestServer()
         
         -- Tìm server cũ nhất (lâu nhất) có chỗ trống
         for _, server in ipairs(result.data) do
-            -- Điều kiện: không phải server hiện tại + có chỗ trống
             if server.id ~= currentJobId and server.playing < server.maxPlayers then
                 oldestServer = server
-                break -- Server đầu tiên trong danh sách sắp xếp Asc là cũ nhất
+                break
             end
         end
         
@@ -116,16 +125,19 @@ local function TeleportToOldestServer()
             MenuButton.Text = "🚀 Đang kết nối..."
             MenuButton.BackgroundColor3 = Color3.fromRGB(0, 180, 100)
             
-            -- Delay trước teleport để tránh lỗi hạn chế
-            task.wait(1)
+            -- Delay dài hơn để tránh lỗi 773
+            task.wait(3)
             
             -- Xử lý teleport an toàn
             local teleportSuccess = pcall(function()
                 TeleportService:TeleportToPlaceInstance(placeId, oldestServer.id, Players.LocalPlayer)
             end)
             
-            if not teleportSuccess then
-                MenuButton.Text = "❌ Teleport bị từ chối"
+            if teleportSuccess then
+                lastTeleportTime = tick()
+                warn("[System] Teleport thành công!")
+            else
+                MenuButton.Text = "❌ Lỗi teleport (773)"
                 MenuButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
                 task.wait(3)
                 MenuButton.Text = "👉 TÌM SERVER LÂU NHẤT"
