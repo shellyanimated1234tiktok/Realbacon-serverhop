@@ -1,5 +1,5 @@
--- [[ SINGLE BUTTON - AUTO SPAM TO OLDEST SERVER ]]
-local SCRIPT_ID = "Delta_ServerHop_OldestServer_V4"
+-- [[ SINGLE BUTTON - AUTO SPAM TO OLDEST SERVER WITH RAINBOW BORDER ]]
+local SCRIPT_ID = "Delta_ServerHop_Rainbow_V5"
 
 if getgenv()[SCRIPT_ID] then
     pcall(function()
@@ -12,6 +12,7 @@ local CoreGui = game:GetService("CoreGui")
 local TeleportService = game:GetService("TeleportService")
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
 
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = SCRIPT_ID
@@ -41,6 +42,30 @@ local Stroke = Instance.new("UIStroke")
 Stroke.Color = Color3.fromRGB(255, 170, 0)
 Stroke.Thickness = 2
 Stroke.Parent = Button
+
+-- Rainbow colors array
+local rainbowColors = {
+    Color3.fromRGB(255, 0, 0),      -- Red
+    Color3.fromRGB(255, 127, 0),    -- Orange
+    Color3.fromRGB(255, 255, 0),    -- Yellow
+    Color3.fromRGB(0, 255, 0),      -- Green
+    Color3.fromRGB(0, 0, 255),      -- Blue
+    Color3.fromRGB(75, 0, 130),     -- Indigo
+    Color3.fromRGB(148, 0, 211),    -- Violet
+}
+
+-- Rainbow animation loop
+task.spawn(function()
+    while ScreenGui and ScreenGui.Parent do
+        for _, color in ipairs(rainbowColors) do
+            if not ScreenGui or not ScreenGui.Parent then break end
+            local tweenInfo = TweenInfo.new(0.5, Enum.EasingStyle.Linear, Enum.EasingDirection.In)
+            local tween = TweenService:Create(Stroke, tweenInfo, {Color = color})
+            tween:Play()
+            tween.Completed:Wait()
+        end
+    end
+end)
 
 -- Spam function - Tìm server lâu nhất
 local isSpamming = false
