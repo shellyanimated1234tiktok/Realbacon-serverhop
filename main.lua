@@ -26,7 +26,7 @@ Button.Name = "ServerHopBtn"
 Button.Size = UDim2.new(0, 150, 0, 45)
 Button.Position = UDim2.new(0.05, 0, 0.15, 0)
 Button.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
-Button.Text = "AUTO SPAM"
+Button.Text = "SERVER HOP"
 Button.TextColor3 = Color3.fromRGB(255, 255, 255)
 Button.Font = Enum.Font.SourceSansBold
 Button.TextSize = 13
@@ -96,7 +96,7 @@ local function Spam()
         task.wait(2)
     end
     
-    Button.Text = "AUTO SPAM"
+    Button.Text = "SERVER HOP"
     Button.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
     isSpamming = false
 end
