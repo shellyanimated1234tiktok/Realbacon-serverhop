@@ -1,5 +1,5 @@
--- [[ SINGLE BUTTON - AUTO SPAM TELEPORT ]]
-local SCRIPT_ID = "Delta_ServerHop_SingleBtn_V3"
+-- [[ SINGLE BUTTON - AUTO SPAM TO OLDEST SERVER ]]
+local SCRIPT_ID = "Delta_ServerHop_OldestServer_V4"
 
 if getgenv()[SCRIPT_ID] then
     pcall(function()
@@ -42,7 +42,7 @@ Stroke.Color = Color3.fromRGB(255, 170, 0)
 Stroke.Thickness = 2
 Stroke.Parent = Button
 
--- Spam function
+-- Spam function - Tìm server lâu nhất
 local isSpamming = false
 
 local function Spam()
@@ -66,14 +66,21 @@ local function Spam()
         end)
         
         if ok and result and result.data then
+            -- Tìm server lâu nhất (oldest - đã được sắp xếp từ API)
+            local oldestServer = nil
+            
             for _, server in ipairs(result.data) do
                 if server.id ~= currentJobId and server.playing < server.maxPlayers then
-                    pcall(function()
-                        TeleportService:TeleportToPlaceInstance(placeId, server.id, Players.LocalPlayer)
-                    end)
-                    success = true
-                    break
+                    oldestServer = server
+                    break -- Đã là server lâu nhất rồi (API sắp xếp Asc)
                 end
+            end
+            
+            if oldestServer then
+                pcall(function()
+                    TeleportService:TeleportToPlaceInstance(placeId, oldestServer.id, Players.LocalPlayer)
+                end)
+                success = true
             end
         end
         
