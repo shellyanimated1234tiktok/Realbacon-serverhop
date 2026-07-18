@@ -1,5 +1,5 @@
 -- [[ SINGLE BUTTON - AUTO SPAM TO OLDEST SERVER WITH RAINBOW BORDER + DRAGGABLE ]]
-local SCRIPT_ID = "Delta_ServerHop_Fixed_V6"
+local SCRIPT_ID = "Delta_ServerHop_Fixed_V7"
 
 if getgenv()[SCRIPT_ID] then
     pcall(function()
@@ -14,6 +14,7 @@ local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
 
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = SCRIPT_ID
@@ -44,16 +45,19 @@ Stroke.Color = Color3.fromRGB(255, 170, 0)
 Stroke.Thickness = 2
 Stroke.Parent = Button
 
--- [[ DRAGGABLE SYSTEM ]]
+-- [[ DRAGGABLE SYSTEM - FIX VERSION ]]
 local dragging = false
 local dragStart = nil
 local startPos = nil
+local lastClickTime = 0
+local clickThreshold = 0.2
 
 Button.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 then
         dragging = true
         dragStart = input.Position
         startPos = Button.Position
+        lastClickTime = tick()
     end
 end)
 
@@ -64,9 +68,14 @@ Button.InputEnded:Connect(function(input)
 end)
 
 UserInputService.InputChanged:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseMovement and dragging then
+    if input.UserInputType == Enum.UserInputType.MouseMovement and dragging and dragStart then
         local delta = input.Position - dragStart
-        Button.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        local distance = math.sqrt(delta.X^2 + delta.Y^2)
+        
+        if distance > 5 then -- Threshold để detect drag
+            Button.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+            dragging = true -- Lock drag state
+        end
     end
 end)
 
@@ -97,14 +106,35 @@ end)
 -- Spam function - Tìm server lâu nhất CHẮC CHẮN
 local isSpamming = false
 
+local function GetOldestServer()
+    local placeId = game.PlaceId
+    local currentJobId = game.JobId
+    
+    local apiURL = "https://games.roblox.com/v1/games/" .. placeId .. "/servers/Public?sortOrder=Asc&limit=100"
+    
+    local ok, result = pcall(function()
+        return HttpService:JSONDecode(game:HttpGet(apiURL))
+    end)
+    
+    if ok and result and result.data and #result.data > 0 then
+        for _, server in ipairs(result.data) do
+            if server.id ~= currentJobId and server.playing < server.maxPlayers then
+                return server
+            end
+        end
+    end
+    
+    return nil
+end
+
 local function Spam()
     if isSpamming then return end
     isSpamming = true
     dragging = false
     Button.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+    Button.Text = "🔴 SPAM CHẠY"
     
     local placeId = game.PlaceId
-    local currentJobId = game.JobId
     local attemptCount = 0
     local maxAttempts = 50
     local success = false
@@ -112,38 +142,22 @@ local function Spam()
     while attemptCount < maxAttempts and not success do
         attemptCount = attemptCount + 1
         
-        -- API với sortOrder=Asc = server cũ nhất lên đầu
-        local apiURL = "https://games.roblox.com/v1/games/" .. placeId .. "/servers/Public?sortOrder=Asc&limit=100"
+        local oldestServer = GetOldestServer()
         
-        local ok, result = pcall(function()
-            return HttpService:JSONDecode(game:HttpGet(apiURL))
-        end)
-        
-        if ok and result and result.data and #result.data > 0 then
-            -- Lấy server đầu tiên có chỗ trống = server lâu nhất
-            local oldestServer = nil
-            
-            for i, server in ipairs(result.data) do
-                if server.id ~= currentJobId and server.playing < server.maxPlayers then
-                    oldestServer = server
-                    break
-                end
-            end
-            
-            if oldestServer then
-                pcall(function()
-                    TeleportService:TeleportToPlaceInstance(placeId, oldestServer.id, Players.LocalPlayer)
-                end)
-                success = true
-            end
+        if oldestServer then
+            pcall(function()
+                TeleportService:TeleportToPlaceInstance(placeId, oldestServer.id, Players.LocalPlayer)
+            end)
+            success = true
         end
         
-        task.wait(0.2)
+        task.wait(0.3)
     end
     
     if success then
         Button.Text = "✅ OK"
         Button.BackgroundColor3 = Color3.fromRGB(0, 180, 100)
+        task.wait(1)
     else
         Button.Text = "❌ FAIL"
         Button.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
@@ -156,7 +170,7 @@ local function Spam()
 end
 
 Button.MouseButton1Click:Connect(function()
-    if not dragging then
+    if not dragging and (tick() - lastClickTime) > clickThreshold then
         Spam()
     end
 end)
